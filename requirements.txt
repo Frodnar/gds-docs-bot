@@ -1,0 +1,7 @@
+langchain
+openai
+langchain-openai
+langchain-community
+neo4j
+streamlit
+streamlit-chat
