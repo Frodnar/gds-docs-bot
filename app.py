@@ -49,8 +49,10 @@ if query := st.chat_input("Ask a question about GDS."):
     with st.chat_message("user"):
         st.markdown(query)
 
-        graph_result = chain.invoke(query)
-
+        try:
+            graph_result = chain.invoke(query)
+        except:
+            graph_result = "Generated Cypher query was invalid.  No result returned."
         vector_result = existing_index_return.similarity_search(query, k=1)[0]
         
         final_prompt = f"""You are a helpful question-answering agent. Your task is to analyze
