@@ -18,7 +18,7 @@ st.markdown("""It is backed by an AuraDB instance where I've loaded the [documen
 st.markdown("""Try asking questions such as:
 - *What algorithms are related to breadth first search?*
 - *What metrics can node similarity be based on?*
-- *What can you tell me about node similarity?*""")
+- *What can you tell me about the Leiden algorithm?*""")
 
 os.environ['OPENAI_API_KEY'] = st.secrets['api_keys']['openai']
 
@@ -51,6 +51,10 @@ Do not include any text except the generated Cypher statement.
 Always search for IDs using toLower() and CONTAINS.
 Never specify a target node label.
 If you're asked a very generic question like 'what do you know about X' or 'tell me about Y' then return all relationships to and from that node.
+If you're asked to compare two algorithms, return all relationships to both nodes.
+Use the spelled out name for acronyms like BFS (Breadth First Search) and DFS (Depth First Search).
+For algorithms that sometimes have hyphens in the names (like K-1 coloring) search both with and without the hyphen.
+For algorithms that sometimes end in 'ing' (like triangle counting), search without the 'ing' (triangle count).
 Examples: Here are a few examples of generated Cypher statements for particular questions:
 # What does the Degree Centrality algorithm measure?
 MATCH (a:Algorithm) WHERE toLower(a.id) CONTAINS "degree centrality" MATCH (a)-[:MEASURES]->(m) RETURN m
@@ -64,6 +68,11 @@ MATCH (a:Algorithm) WHERE toLower(a.id) CONTAINS "node similarity" MATCH (a)-[:B
 MATCH (l:Library) WHERE toLower(l.id) CONTAINS "graph data science" MATCH (l)-[:HAS_EDITION]->(e) RETURN e
 # What do you know about the Leiden algorithm?
 MATCH (a:Algorithm) WHERE toLower(a.id) CONTAINS "leiden" MATCH path=(a)-[]-() RETURN path
+# What are the differences between BFS and DFS?
+MATCH (a:Algorithm) WHERE toLower(a.id) IN ["breadth first search", "depth first search"] MATCH path=(a)-[]-() RETURN path
+# What are the pros and cons of the K-1 Coloring algorithm? What about triangle counting?
+MATCH (a:Algorithm) WHERE toLower(a.id) IN ["k-1 color", "k1 color", "triangle count", "triangle-count"] MATCH path=(a)-[]-() RETURN path
+
 
 The question is:
 {question}"""
@@ -101,7 +110,7 @@ if query := st.chat_input("Ask a question about GDS."):
         
         graph_result = chain.invoke({'query': query})
 
-        vector_result = existing_index_return.similarity_search(query, k=1)[0]
+        vector_result = existing_index_return.similarity_search(query, k=5)
         
         final_prompt = f"""You are a helpful question-answering agent. Your task is to analyze
         and synthesize information from two sources: the top result from a similarity search
@@ -122,7 +131,7 @@ if query := st.chat_input("Ask a question about GDS."):
             stream=True,
         )
         st.markdown("*Returned vector data:*")
-        vector_response = st.markdown("> " + vector_result.page_content[:300].replace("\n", "\n> ") + "...")
+        vector_response = st.markdown("> " + vector_result[0].page_content[:300].replace("\n", "\n> ") + "...")
         st.markdown("*Returned KG data:*" )
         #st.markdown("> " + graph_result['intermediate_steps'].replace("\n", "\n> "))
         try:
